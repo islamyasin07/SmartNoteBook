@@ -97,7 +97,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setSession(data.session ?? null);
         setUser(data.session?.user ?? null);
-        await withTimeout(loadProfile(data.session?.user?.id));
+        // Do not block app boot on profile fetch.
+        // The app should stop showing the global session spinner as soon as auth session is known.
+        setLoading(false);
+        void loadProfile(data.session?.user?.id);
       } catch (e) {
         console.error('initializeSession failed:', e);
         if (!mounted) return;
@@ -117,7 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
-        await withTimeout(loadProfile(nextSession?.user?.id));
+        // Same behavior on auth state change: update app auth state immediately,
+        // then resolve profile in background.
+        setLoading(false);
+        void loadProfile(nextSession?.user?.id);
       } catch (e) {
         console.error('onAuthStateChange handler failed:', e);
         if (!mounted) return;
@@ -127,8 +133,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    // Absolute failsafe: never leave global loading spinner stuck forever.
+    const bootFailsafe = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 15000);
+
     return () => {
       mounted = false;
+      clearTimeout(bootFailsafe);
       listener.subscription.unsubscribe();
     };
   }, []);
