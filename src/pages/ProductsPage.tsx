@@ -24,7 +24,10 @@ export const ProductsPage = () => {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const loadProducts = async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const result = await getProducts(shopId);
     setProducts(result.products);

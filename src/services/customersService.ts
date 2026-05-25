@@ -39,7 +39,7 @@ export const getCustomers = async (shopId: string) => {
 
 export const createCustomer = async (input: {
   shopId: string;
-  userId: string;
+  userId?: string | null;
   name: string;
   phone?: string;
   city?: string;
@@ -51,7 +51,7 @@ export const createCustomer = async (input: {
     phone: input.phone || null,
     city: input.city || null,
     notes: input.notes || null,
-    created_by: input.userId,
+    created_by: input.userId || null,
     updated_at: new Date().toISOString()
   }).select('*').single<Customer>();
 

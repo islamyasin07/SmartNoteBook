@@ -55,7 +55,7 @@ export const getTransactionsByCustomerId = async (shopId: string, customerId: st
 
 export const createTransaction = async (input: {
   shopId: string;
-  userId: string;
+  userId?: string | null;
   customerId: string;
   date: string;
   note?: string;
@@ -109,7 +109,7 @@ export const createTransaction = async (input: {
     remaining,
     status,
     note: input.note || null,
-    created_by: input.userId,
+    created_by: input.userId || null,
     updated_at: new Date().toISOString()
   }).select('*').single<Transaction>();
 
@@ -149,7 +149,7 @@ export const createTransaction = async (input: {
       amount: paidTotal,
       method: input.paymentMethod || 'Cash',
       note: input.paymentNote || null,
-      created_by: input.userId
+      created_by: input.userId || null
     });
 
     if (paymentError) {

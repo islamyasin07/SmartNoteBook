@@ -33,7 +33,10 @@ export const CustomersPage = () => {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
   const loadCustomers = async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const result = await getCustomers(shopId);
     setCustomers(result.customers);

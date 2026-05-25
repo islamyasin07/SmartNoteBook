@@ -68,7 +68,7 @@ export default function App() {
               <Route path="ledger" element={<LedgerPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </motion.div>
       </AnimatePresence>

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
-import { getProfileByUserId } from '../services/profileService';
+import { bootstrapCurrentUserProfile, getProfileByUserId } from '../services/profileService';
 import type { ReactNode } from 'react';
 
 interface AuthContextValue {
@@ -30,18 +30,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadProfile = async (userId: string | undefined) => {
     if (!userId) {
       setProfile(null);
+      setError(null);
       return;
     }
 
-    const result = await getProfileByUserId(userId);
-    if (result.error) {
-      setError(result.error);
+    try {
+      const result = await getProfileByUserId(userId);
+      console.log('loadProfile result:', result);
+      if (result && result.error) {
+        setError(result.error);
+        setProfile(null);
+        return;
+      }
+      if (!result.profile) {
+        const bootstrap = await bootstrapCurrentUserProfile();
+        if (bootstrap.error) {
+          setError(bootstrap.error);
+          setProfile(null);
+          return;
+        }
+
+        const refreshed = await getProfileByUserId(userId);
+        if (refreshed.error || !refreshed.profile) {
+          setError(refreshed.error || 'تعذر إعداد ملف المستخدم.');
+          setProfile(null);
+          return;
+        }
+
+        setError(null);
+        setProfile(refreshed.profile);
+        return;
+      }
+      setError(null);
+      setProfile(result?.profile ?? null);
+    } catch (e: any) {
+      console.error('loadProfile failed:', e);
+      setError('تعذر تحميل ملف المستخدم.');
       setProfile(null);
-      return;
     }
-
-    setError(null);
-    setProfile(result.profile ?? null);
   };
 
   useEffect(() => {
@@ -76,7 +102,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
     setProfile(null);
+    setError(null);
   };
 
   const refreshProfile = async () => {

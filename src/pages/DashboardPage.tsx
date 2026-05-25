@@ -16,7 +16,10 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     getDashboardStats(shopId).then((result) => {
       setStats(result);

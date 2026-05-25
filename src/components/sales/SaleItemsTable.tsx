@@ -15,9 +15,7 @@ export const SaleItemsTable = ({
   onRemoveItem: (index: number) => void;
   onUpdateItem: (index: number, next: SaleDraftItem) => void;
 }) => {
-  const options = products.map((product) => (
-    <option key={product.id} value={product.id}>{product.name} - {product.stock} متوفر</option>
-  ));
+  const productNames = products.map((p) => <option key={p.id} value={p.name} />);
 
   return (
     <div className="space-y-4">
@@ -36,25 +34,30 @@ export const SaleItemsTable = ({
             {items.map((item, index) => (
               <tr key={`${item.productId}-${index}`} className="border-t border-white/5 bg-slate-950/35">
                 <td className="px-4 py-4">
-                  <select
+                  <input
+                    list={`products-list-${index}`}
                     className="glass-input"
-                    value={item.productId}
+                    value={item.productName}
                     onChange={(event) => {
-                      const product = products.find((current) => current.id === event.target.value);
-                      if (!product) return;
-                      onUpdateItem(index, {
-                        productId: product.id,
-                        productName: product.name,
-                        sku: product.sku,
-                        quantity: item.quantity,
-                        unitPrice: product.price,
-                        stock: product.stock
-                      });
+                      const value = event.target.value;
+                      const found = products.find((p) => p.id === value || p.name === value || `${p.name} - ${p.stock} متوفر` === value);
+                      if (found) {
+                        onUpdateItem(index, {
+                          productId: found.id,
+                          productName: found.name,
+                          sku: found.sku,
+                          quantity: item.quantity,
+                          unitPrice: found.price,
+                          stock: found.stock
+                        });
+                      } else {
+                        onUpdateItem(index, { ...item, productId: '', productName: value });
+                      }
                     }}
-                  >
-                    <option value="">اختر منتج</option>
-                    {options}
-                  </select>
+                  />
+                  <datalist id={`products-list-${index}`}>
+                    {productNames}
+                  </datalist>
                 </td>
                 <td className="px-4 py-4">
                   <input className="glass-input" type="number" min="1" step="1" value={item.quantity} onChange={(event) => onUpdateItem(index, { ...item, quantity: Number(event.target.value) })} />
@@ -64,14 +67,14 @@ export const SaleItemsTable = ({
                 </td>
                 <td className="px-4 py-4 text-cyan-200">{formatCurrency(item.quantity * item.unitPrice)}</td>
                 <td className="px-4 py-4">
-                  <button className="glass-button-danger px-3 py-2 text-sm" onClick={() => onRemoveItem(index)}><Trash2 size={14} /></button>
+                  <button type="button" className="glass-button-danger px-3 py-2 text-sm" onClick={() => onRemoveItem(index)}><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button className="glass-button-secondary" onClick={onAddItem}>
+      <button type="button" className="glass-button-secondary" onClick={onAddItem}>
         <Plus size={16} /> إضافة بند
       </button>
     </div>

@@ -18,7 +18,10 @@ export const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     getShopById(shopId).then((result) => {
       setShopName(result.shop?.name ?? '—');

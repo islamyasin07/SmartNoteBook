@@ -19,6 +19,7 @@ export const NewSaleForm = ({
   loading?: boolean;
   onSubmit: (payload: {
     customerId: string;
+    customerName?: string;
     date: string;
     note: string;
     items: SaleDraftItem[];
@@ -29,12 +30,14 @@ export const NewSaleForm = ({
   onQuickAddCustomer: () => void;
 }) => {
   const [customerId, setCustomerId] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState('');
   const [paidAmount, setPaidAmount] = useState('0');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [paymentNote, setPaymentNote] = useState('');
   const [items, setItems] = useState<SaleDraftItem[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!items.length && products.length) {
@@ -49,6 +52,20 @@ export const NewSaleForm = ({
           stock: firstProduct.stock
         }
       ]);
+      return;
+    }
+
+    if (!items.length && !products.length) {
+      setItems([
+        {
+          productId: '',
+          productName: '',
+          sku: '',
+          quantity: 1,
+          unitPrice: 0,
+          stock: 0
+        }
+      ]);
     }
   }, [products, items.length]);
 
@@ -56,12 +73,53 @@ export const NewSaleForm = ({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+
+    const normalizedCustomerName = customerName.trim();
+    const normalizedPaidAmount = Number(paidAmount);
+
+    if (!customerId && !normalizedCustomerName) {
+      setFormError('اختر زبون موجود أو اكتب اسم الزبون أولاً');
+      return;
+    }
+
+    if (!date) {
+      setFormError('التاريخ مطلوب');
+      return;
+    }
+
+    if (!items.length) {
+      setFormError('أضف بندًا واحدًا على الأقل');
+      return;
+    }
+
+    for (const [index, item] of items.entries()) {
+      if (!item.productId && !item.productName.trim()) {
+        setFormError(`البند ${index + 1}: اكتب اسم المنتج أولاً`);
+        return;
+      }
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+        setFormError(`البند ${index + 1}: الكمية يجب أن تكون أكبر من صفر`);
+        return;
+      }
+      if (!Number.isFinite(item.unitPrice) || item.unitPrice < 0) {
+        setFormError(`البند ${index + 1}: سعر الوحدة يجب أن يكون صفر أو أكثر`);
+        return;
+      }
+    }
+
+    if (!Number.isFinite(normalizedPaidAmount) || normalizedPaidAmount < 0) {
+      setFormError('الدفعة الأولية يجب أن تكون صفر أو أكثر');
+      return;
+    }
+
+    setFormError(null);
     await onSubmit({
       customerId,
+      customerName: normalizedCustomerName || undefined,
       date,
       note,
       items,
-      paidAmount: Number(paidAmount),
+      paidAmount: normalizedPaidAmount,
       paymentMethod,
       paymentNote
     });
@@ -69,14 +127,37 @@ export const NewSaleForm = ({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      {formError ? (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {formError}
+        </div>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <GlassCard className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="الزبون *">
-              <select className="glass-input" value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
-                <option value="">اختر زبونًا</option>
-                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-              </select>
+              <input
+                list="customers-list"
+                className="glass-input"
+                value={customerId ? customers.find(c => c.id === customerId)?.name ?? '' : customerName}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  // find by name
+                  const found = customers.find((c) => c.name === value || c.phone === value);
+                  if (found) {
+                    setCustomerId(found.id);
+                    setCustomerName(found.name);
+                  } else {
+                    setCustomerId('');
+                    setCustomerName(value);
+                  }
+                }}
+                placeholder="اكتب اسم الزبون أو اختر من القائمة"
+              />
+              <datalist id="customers-list">
+                {customers.map((customer) => <option key={customer.id} value={customer.name} />)}
+              </datalist>
+              <input type="hidden" value={customerId} />
             </FormField>
             <FormField label="التاريخ *">
               <input className="glass-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
@@ -119,7 +200,17 @@ export const NewSaleForm = ({
         products={products}
         onAddItem={() => {
           const firstProduct = products[0];
-          if (!firstProduct) return;
+          if (!firstProduct) {
+            setItems((current) => [...current, {
+              productId: '',
+              productName: '',
+              sku: '',
+              quantity: 1,
+              unitPrice: 0,
+              stock: 0
+            }]);
+            return;
+          }
           setItems((current) => [...current, {
             productId: firstProduct.id,
             productName: firstProduct.name,

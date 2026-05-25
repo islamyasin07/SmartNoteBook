@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Camera, LayoutDashboard, LogOut, ReceiptText, Settings, ShoppingBag, SquarePlus, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRole } from '../../hooks/useRole';
@@ -16,6 +17,12 @@ const navItems = [
 export const Sidebar = () => {
   const { profile, user, signOut } = useAuth();
   const { role } = useRole();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside className="glass-panel sticky top-0 hidden h-screen w-80 flex-col overflow-hidden border-l border-white/10 lg:flex">
@@ -58,7 +65,7 @@ export const Sidebar = () => {
       </nav>
 
       <div className="border-t border-white/10 p-4">
-        <button className="glass-button-secondary w-full justify-between" onClick={() => void signOut()}>
+        <button type="button" className="glass-button-secondary w-full justify-between" onClick={() => void handleSignOut()}>
           <span>تسجيل الخروج</span>
           <LogOut size={18} />
         </button>

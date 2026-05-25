@@ -9,7 +9,7 @@ export const getProducts = async (shopId: string) => {
 
 export const createProduct = async (input: {
   shopId: string;
-  userId: string;
+  userId?: string | null;
   name: string;
   category?: string;
   sku?: string;
@@ -27,7 +27,7 @@ export const createProduct = async (input: {
     stock: input.stock,
     low_stock_threshold: input.low_stock_threshold,
     notes: input.notes || null,
-    created_by: input.userId,
+    created_by: input.userId || null,
     updated_at: new Date().toISOString()
   }).select('*').single<Product>();
 

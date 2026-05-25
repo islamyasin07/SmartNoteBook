@@ -18,6 +18,7 @@ export const CustomerForm = ({
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [notes, setNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(initial?.name ?? '');
@@ -28,11 +29,17 @@ export const CustomerForm = ({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!name.trim()) {
+      setError('اسم الزبون مطلوب');
+      return;
+    }
+    setError(null);
     await onSubmit({ name, phone, city, notes });
   };
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
+      {error ? <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label="الاسم *">
           <input className="glass-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="اسم الزبون" required />

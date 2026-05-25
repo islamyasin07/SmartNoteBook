@@ -2,34 +2,42 @@ create extension if not exists pgcrypto;
 
 create or replace function public.get_current_user_shop_id()
 returns uuid
-language sql
+language plpgsql
 stable
 as $$
-  select shop_id from public.user_profiles where id = auth.uid();
+begin
+  return (select shop_id from public.user_profiles where id = auth.uid());
+end;
 $$;
 
 create or replace function public.get_current_user_role()
 returns text
-language sql
+language plpgsql
 stable
 as $$
-  select role from public.user_profiles where id = auth.uid();
+begin
+  return (select role from public.user_profiles where id = auth.uid());
+end;
 $$;
 
 create or replace function public.is_admin()
 returns boolean
-language sql
+language plpgsql
 stable
 as $$
-  select coalesce(public.get_current_user_role() = 'admin', false);
+begin
+  return coalesce(public.get_current_user_role() = 'admin', false);
+end;
 $$;
 
 create or replace function public.is_staff_or_admin()
 returns boolean
-language sql
+language plpgsql
 stable
 as $$
-  select coalesce(public.get_current_user_role() in ('admin', 'staff'), false);
+begin
+  return coalesce(public.get_current_user_role() in ('admin', 'staff'), false);
+end;
 $$;
 
 create or replace function public.update_updated_at_column()
@@ -39,6 +47,65 @@ as $$
 begin
   new.updated_at = now();
   return new;
+end;
+$$;
+
+create or replace function public.ensure_current_user_profile(
+  p_full_name text default null,
+  p_shop_name text default 'Al-Masdar Security Systems',
+  p_role text default 'admin'
+)
+returns public.user_profiles
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_profile public.user_profiles;
+  v_shop_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  select *
+  into v_profile
+  from public.user_profiles
+  where id = auth.uid();
+
+  if found then
+    return v_profile;
+  end if;
+
+  select id
+  into v_shop_id
+  from public.shops
+  where name = p_shop_name
+  order by created_at asc
+  limit 1;
+
+  if v_shop_id is null then
+    insert into public.shops (name)
+    values (p_shop_name)
+    returning id into v_shop_id;
+  end if;
+
+  insert into public.user_profiles (id, shop_id, full_name, role)
+  values (auth.uid(), v_shop_id, p_full_name, coalesce(p_role, 'admin'))
+  returning * into v_profile;
+
+  return v_profile;
+end;
+$$;
+
+create or replace function public.ensure_current_user_profile()
+returns public.user_profiles
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  return public.ensure_current_user_profile(null, 'Al-Masdar Security Systems', 'admin');
 end;
 $$;
 

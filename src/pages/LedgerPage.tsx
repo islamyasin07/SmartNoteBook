@@ -25,7 +25,10 @@ export const LedgerPage = () => {
   const [transactionToDelete, setTransactionToDelete] = useState<TransactionDetailsType | null>(null);
 
   const loadTransactions = async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const result = await getTransactions(shopId);
     setTransactions(result.transactions);
