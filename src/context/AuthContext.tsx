@@ -70,22 +70,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 12000): Promise<T> => {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), timeoutMs);
+      })
+    ]);
+  };
+
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setUser(data.session?.user ?? null);
-      await loadProfile(data.session?.user?.id);
-      setLoading(false);
-    });
+    const initializeSession = async () => {
+      try {
+        const { data, error: sessionError } = await withTimeout(supabase.auth.getSession());
+        if (!mounted) return;
+
+        if (sessionError) {
+          setError('تعذر تحميل الجلسة.');
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+
+        setSession(data.session ?? null);
+        setUser(data.session?.user ?? null);
+        await withTimeout(loadProfile(data.session?.user?.id));
+      } catch (e) {
+        console.error('initializeSession failed:', e);
+        if (!mounted) return;
+        setError('تعذر تحميل الجلسة.');
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void initializeSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      await loadProfile(nextSession?.user?.id);
-      setLoading(false);
+      try {
+        if (!mounted) return;
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        await withTimeout(loadProfile(nextSession?.user?.id));
+      } catch (e) {
+        console.error('onAuthStateChange handler failed:', e);
+        if (!mounted) return;
+        setError('تعذر تحديث حالة الجلسة.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
     });
 
     return () => {
