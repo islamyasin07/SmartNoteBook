@@ -1,0 +1,1 @@
+export const shortId = (value: string) => value.slice(0, 8).toUpperCase();
